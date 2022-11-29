@@ -25,3 +25,14 @@ int main(){
     return 0;
 }
 
+unsigned long translate(
+        PageTableEntry *pageTable, // the page table itself
+        unsigned long pageNum, // the virtual page being translated
+        unsigned long iPageNum, // the page of the instruction address corresponding to this data
+        // page; or zero if pageNum corresponds to an instruction address
+        MemStruct *memStruct // information about the virtual memory
+    ){
+
+
+}
+
