@@ -34,8 +34,7 @@ unsigned long translate(
 
 #define BUFFLEN 1024
 #define PAGESIZE 4096
-#define FRAMENUM 16
-
+#define FRAMENUM 16  //change to 32 or 64 when necessary
 #define FILENAME "testOne.atrace.out"
 
 
