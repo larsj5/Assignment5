@@ -34,6 +34,7 @@ unsigned long translate(
 
 #define BUFFLEN 1024
 #define PAGESIZE 4096
+#define FRAMENUM 16
 
 #define FILENAME "testOne.atrace.out"
 
@@ -42,7 +43,7 @@ int main(){
     // Create and initialize structs
     MemStruct memStruct;
 
-    memStruct.numFrames = 16; //not sure about this
+    memStruct.numFrames = FRAMENUM; //not sure about this
     memStruct.currentTime = 0;
     memStruct.policy = FIFO;
     memStruct.numPageFaults = 0;
@@ -79,8 +80,10 @@ int main(){
         unsigned long iPageNum = val1 / PAGESIZE;
         unsigned long dPageNum = val2 / PAGESIZE;
 
-        //call translate function
+        //call translate function on instruction and then data
+        translate(&pageTable, iPageNum, 0, &memStruct);
         translate(&pageTable, dPageNum, iPageNum, &memStruct);
+
 
         chp = fgets(buffer, BUFFLEN, fp);
     }
@@ -114,8 +117,9 @@ unsigned long translate(
         return frameNum;
     } else {
         memStruct->numPageFaults++;
+        // need to be sure in here that we don't replace the instruction page if we're loading the data
         // TODO: targetFrame = getFreeFrame()
-        // pageTable[targetFrame] = p;
+        pageTable[targetFrame].pageNum = pageNum;
         pageTable[targetFrame].inUse = 1;
         pageTable[targetFrame].useTime = memStruct->currentTime;
         pageTable[targetFrame].inTime = memStruct->currentTime;
