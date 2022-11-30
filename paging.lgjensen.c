@@ -115,14 +115,12 @@ unsigned long translate(
     } else {
         memStruct->numPageFaults++;
         // TODO: targetFrame = getFreeFrame()
-        pageTable[targetFrame] = p;
+        // pageTable[targetFrame] = p;
         pageTable[targetFrame].inUse = 1;
         pageTable[targetFrame].useTime = memStruct->currentTime;
         pageTable[targetFrame].inTime = memStruct->currentTime;
         memStruct->currentTime++;
-        return targetFrame
+        return targetFrame;
     }
-
-
 }
 
