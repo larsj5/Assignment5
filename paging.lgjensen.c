@@ -30,11 +30,19 @@ unsigned long translate(
         unsigned long iPageNum, // the page of the instruction address corresponding to this data
         // page; or zero if pageNum corresponds to an instruction address
         MemStruct *memStruct // information about the virtual memory
-);
+        );
+
+int getFreeFrame(PageTableEntry *pageTable, // the page table itself
+                 unsigned long pageNum, // the virtual page being translated
+                 unsigned long iPageNum, //instruction page number, 0 if first is instruction
+                 MemStruct *memStruct // info about virtual memory
+                 );
+
 
 #define BUFFLEN 1024
 #define PAGESIZE 4096
 #define FRAMENUM 16
+#define POLICY FIFO
 
 #define FILENAME "testOne.atrace.out"
 
@@ -45,11 +53,17 @@ int main(){
 
     memStruct.numFrames = FRAMENUM; //not sure about this
     memStruct.currentTime = 0;
-    memStruct.policy = FIFO;
+    memStruct.policy = POLICY;
     memStruct.numPageFaults = 0;
 
     PageTableEntry pageTable[memStruct.numFrames];
 
+    for (int i = 0; i < memStruct.numFrames; ++i){
+        pageTable[i].pageNum = 0;
+        pageTable[i].inUse = 0;
+        pageTable[i].useTime = 0;
+        pageTable[i].inTime = 0;
+    }
 
     // variables for reading in from file
     char buffer[BUFFLEN];
@@ -90,6 +104,8 @@ int main(){
 
     fclose(fp);
 
+    printf("Number of Page faults: %d", memStruct.numPageFaults);
+
     return 0;
 }
 
@@ -110,21 +126,77 @@ unsigned long translate(
             frameNum = i;
         }
     }
-
+    // If there is any entry in the page table matching the page number
+    // of the address that is being translated (and for which the inUse flag is not zero (DON'T GET THIS))
     if (inTable == 1) {
         pageTable[frameNum].useTime = memStruct->currentTime;
         memStruct->currentTime++;
         return frameNum;
-    } else {
+    }
+    else
+    {
         memStruct->numPageFaults++;
         // need to be sure in here that we don't replace the instruction page if we're loading the data
-        // TODO: targetFrame = getFreeFrame()
+        targetFrame = getFreeFrame(&pageTable, pageNum, iPageNum, &memStruct);
+        if (targetFrame == -1){
+            printf("Error in getting free frame");
+            return -1;
+        }
         pageTable[targetFrame].pageNum = pageNum;
         pageTable[targetFrame].inUse = 1;
         pageTable[targetFrame].useTime = memStruct->currentTime;
         pageTable[targetFrame].inTime = memStruct->currentTime;
         memStruct->currentTime++;
         return targetFrame;
+    }
+}
+
+int getFreeFrame(PageTableEntry *pageTable,
+                 unsigned long pageNum,
+                 unsigned long iPageNum,
+                 MemStruct *memStruct
+                 ){
+    // check if there's a free frame, if so return it
+    for (int i = 0; i < memStruct->numFrames; ++i){
+        if (pageTable[i].inUse == 0){
+            return i;
+        }
+    }
+
+    int frameNum;
+    // if not, replace a frame based on the replacement policy
+    if (memStruct->policy == RANDOM){
+        //randomly choose a frame to replace
+        frameNum = rand() % memStruct->numFrames;
+
+        // make sure we're not replacing the instruction address associated with the data
+        while (pageTable[frameNum].pageNum == iPageNum){
+            frameNum = rand() % memStruct->numFrames;
+        }
+        return frameNum;
+    }
+    else if (memStruct->policy == FIFO){
+        int lastIn = 99999999; // set to some egregiously high number
+        for (int i = 0; i < memStruct->numFrames; ++i){
+            if (pageTable[i].inTime < lastIn && pageTable[i].pageNum != iPageNum){
+                lastIn = pageTable[i].inTime;
+                frameNum = i;
+            }
+        }
+        return frameNum;
+    }
+    else if (memStruct->policy == LRU){
+        int lastUsed = 99999999; // set to some egregiously high number
+        for (int i = 0; i < memStruct->numFrames; ++i){
+            if (pageTable[i].useTime < lastUsed && pageTable[i].pageNum != iPageNum){
+                lastUsed = pageTable[i].useTime;
+                frameNum = i;
+            }
+        }
+        return frameNum;
+    }
+    else{
+        return -1; //something must have gone wrong
     }
 }
 
