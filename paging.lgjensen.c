@@ -73,7 +73,7 @@ int main(){
     FILE *fp;
     char *chp;
 
-    fp = fopen(FILENAME, "r");
+    fp = fopen(FILENAME, "r"); // i had to use my path - C:\Users\aidan\CLionProjects\Assignment5
     if (fp == NULL) {
         printf("cannot open file '%s' for reading\n", FILENAME);
         return 8;
@@ -89,7 +89,6 @@ int main(){
             printf("%s", buffer);
             printf("val1 = %lu; val2 = %lu\n", val1, val2);
         }
-
         //translate val1 and val2 into page numbers
         unsigned long iPageNum = val1 / PAGESIZE;
         unsigned long dPageNum = val2 / PAGESIZE;
@@ -104,6 +103,8 @@ int main(){
 
     fclose(fp);
 
+
+
     printf("Number of Page faults: %d", memStruct.numPageFaults);
 
     return 0;
@@ -116,6 +117,7 @@ unsigned long translate(
         // page; or zero if pageNum corresponds to an instruction address
         MemStruct *memStruct // information about the virtual memory
     ){
+
 
     int frameNum = 0;
     int targetFrame = 0;
@@ -136,12 +138,16 @@ unsigned long translate(
     else
     {
         memStruct->numPageFaults++;
+//        printf("num page faults: %d \n", memStruct->numPageFaults);
         // need to be sure in here that we don't replace the instruction page if we're loading the data
         targetFrame = getFreeFrame(&pageTable, pageNum, iPageNum, &memStruct);
         if (targetFrame == -1){
             printf("Error in getting free frame");
             return -1;
         }
+        printf("num frames: %d\n", memStruct->numFrames);
+        printf("num faults: %d\n", memStruct->numPageFaults);
+
         pageTable[targetFrame].pageNum = pageNum;
         pageTable[targetFrame].inUse = 1;
         pageTable[targetFrame].useTime = memStruct->currentTime;
@@ -156,6 +162,7 @@ int getFreeFrame(PageTableEntry *pageTable,
                  unsigned long iPageNum,
                  MemStruct *memStruct
                  ){
+
     // check if there's a free frame, if so return it
     for (int i = 0; i < memStruct->numFrames; ++i){
         if (pageTable[i].inUse == 0){
