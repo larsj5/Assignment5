@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
 
 // Enum for replacement policies
 enum ReplacementPolicy {FIFO = 0, LRU = 1, RANDOM = 2};
@@ -42,9 +44,9 @@ int getFreeFrame(PageTableEntry *pageTable, // the page table itself
 #define BUFFLEN 1024
 #define PAGESIZE 4096
 #define FRAMENUM 16
-#define POLICY FIFO
+#define POLICY RANDOM
 
-#define FILENAME "testOne.atrace.out"
+#define FILENAME "/Users/larsjensen/Desktop/CS 201/Assignment5/small-loop.atrace.out"
 
 
 int main(){
@@ -84,7 +86,7 @@ int main(){
     while ( chp != NULL ) {
 
         //read data in from file, val1 is instruction address, val2 is data address
-        nf = sscanf(buffer, "%lp: %c %lp", &val1, tmpbuf, &val2);
+        nf = sscanf(buffer, "%lx: %c %lx", &val1, tmpbuf, &val2);
         if (nf == 3) {
             printf("%s", buffer);
             printf("val1 = %lu; val2 = %lu\n", val1, val2);
@@ -94,8 +96,8 @@ int main(){
         unsigned long dPageNum = val2 / PAGESIZE;
 
         //call translate function on instruction and then data
-        translate(&pageTable, iPageNum, 0, &memStruct);
-        translate(&pageTable, dPageNum, iPageNum, &memStruct);
+        translate((PageTableEntry *) &pageTable, iPageNum, 0, &memStruct);
+        translate((PageTableEntry *) &pageTable, dPageNum, iPageNum, &memStruct);
 
 
         chp = fgets(buffer, BUFFLEN, fp);
@@ -118,12 +120,12 @@ unsigned long translate(
         MemStruct *memStruct // information about the virtual memory
     ){
 
-
+    printf("Translating...\n");
     int frameNum = 0;
-    int targetFrame = 0;
+    int targetFrame;
     int inTable = 0; //represents if page num is in page table or not
     for (int i = 0; i < memStruct->numFrames; ++i){
-        if (pageTable[i].pageNum == pageNum || pageTable[i].pageNum == iPageNum){
+        if (pageTable[i].pageNum == pageNum){
             inTable = 1;
             frameNum = i;
         }
@@ -131,6 +133,7 @@ unsigned long translate(
     // If there is any entry in the page table matching the page number
     // of the address that is being translated (and for which the inUse flag is not zero (DON'T GET THIS))
     if (inTable == 1) {
+        printf("Already in the table!\n");
         pageTable[frameNum].useTime = memStruct->currentTime;
         memStruct->currentTime++;
         return frameNum;
@@ -138,15 +141,13 @@ unsigned long translate(
     else
     {
         memStruct->numPageFaults++;
-//        printf("num page faults: %d \n", memStruct->numPageFaults);
         // need to be sure in here that we don't replace the instruction page if we're loading the data
-        targetFrame = getFreeFrame(&pageTable, pageNum, iPageNum, &memStruct);
+        targetFrame = getFreeFrame(pageTable, pageNum, iPageNum, memStruct);
         if (targetFrame == -1){
-            printf("Error in getting free frame");
+            printf("Error in getting free frame\n");
             return -1;
         }
-        printf("num frames: %d\n", memStruct->numFrames);
-        printf("num faults: %d\n", memStruct->numPageFaults);
+        printf("%d\n", targetFrame);
 
         pageTable[targetFrame].pageNum = pageNum;
         pageTable[targetFrame].inUse = 1;
@@ -170,7 +171,7 @@ int getFreeFrame(PageTableEntry *pageTable,
         }
     }
 
-    int frameNum;
+    int frameNum = 99;
     // if not, replace a frame based on the replacement policy
     if (memStruct->policy == RANDOM){
         //randomly choose a frame to replace
@@ -183,6 +184,7 @@ int getFreeFrame(PageTableEntry *pageTable,
         return frameNum;
     }
     else if (memStruct->policy == FIFO){
+        printf("in FIFO\n");
         int lastIn = 99999999; // set to some egregiously high number
         for (int i = 0; i < memStruct->numFrames; ++i){
             if (pageTable[i].inTime < lastIn && pageTable[i].pageNum != iPageNum){
